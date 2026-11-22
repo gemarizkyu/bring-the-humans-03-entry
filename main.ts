@@ -19,10 +19,31 @@
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
 import { copyFileSync, mkdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
 const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+
+// The video address must be a real TikTok video URL: https://www.tiktok.com/@<handle>/video/<digits>
+const TIKTOK_URL_PATTERN = /^https:\/\/www\.tiktok\.com\/@[A-Za-z0-9._-]+\/video\/\d+$/;
+
+let videoUrl: string;
+try {
+  const parsed: unknown = JSON.parse(readFileSync(join(BOT_DIR, 'VIDEO.json'), 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null || typeof (parsed as { url?: unknown }).url !== 'string') {
+    throw new Error('VIDEO.json must be an object with a string "url" field');
+  }
+  videoUrl = (parsed as { url: string }).url;
+} catch (err) {
+  console.error(`VIDEO.json could not be read or parsed from ${BOT_DIR}: ${(err as Error).message}`);
+  process.exit(1);
+}
+if (!TIKTOK_URL_PATTERN.test(videoUrl)) {
+  console.error(`Invalid TikTok video URL in VIDEO.json: ${videoUrl}`);
+  process.exit(1);
+}
+console.log(`Copying TikTok video: ${videoUrl}`);
 
 mkdirSync(OUTPUT_DIR, { recursive: true });
 try {
@@ -31,3 +52,4 @@ try {
   console.error(`VIDEO.json could not be copied from ${BOT_DIR}: ${(err as Error).message}`);
   process.exit(1);
 }
+console.log(`VIDEO.json copied to ${join(OUTPUT_DIR, 'VIDEO.json')}`);
